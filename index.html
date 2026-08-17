@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="국시타이머">
+  <title>의사국가고시 실기시험 타이머</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --ink: #16181D;
+    --ink-2: #6B7280;
+    --ink-3: #9CA3AF;
+    --line: #E5E7EB;
+    --line-strong: #D1D5DB;
+    --bg: #FFFFFF;
+    --accent: #2F6FE0;
+    --accent-soft: #EAF1FC;
+    --radius: 16px;
+    --radius-sm: 10px;
+  }
+
+  html, body { height: 100%; background: var(--bg); font-family: 'Noto Sans KR', sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+
+  .app { max-width: 680px; margin: 0 auto; padding: 1.5rem 1.1rem 3rem; }
+  h2.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+  /* TOP BAR */
+  .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+  .app-title { font-size: 15px; font-weight: 700; letter-spacing: 0.01em; }
+  .settings-btn {
+    background: var(--bg); border: 1.5px solid var(--line-strong); cursor: pointer; font-size: 12px;
+    padding: 7px 16px; border-radius: 20px; font-family: 'Noto Sans KR', sans-serif; color: var(--ink-2); font-weight: 600;
+  }
+  .settings-btn:active { background: #F3F4F6; }
+
+  /* CONTROLS ROW */
+  .controls-row { display: flex; align-items: stretch; margin-bottom: 1.25rem; flex-wrap: wrap; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .ctrl-cell { padding: 10px 14px; border-right: 1px solid var(--line); flex: 1; min-width: 140px; }
+  .ctrl-cell:last-child { border-right: none; }
+  .ctrl-label { font-size: 10px; color: var(--ink-3); letter-spacing: 0.04em; display: block; margin-bottom: 3px; }
+  .ctrl-cell select {
+    font-size: 13px; font-weight: 600; font-family: 'Noto Sans KR', sans-serif;
+    border: none; outline: none; background: transparent; color: var(--ink);
+    cursor: pointer; width: 100%;
+  }
+  .cd-time { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .cd-time.over { text-decoration: underline; }
+
+  .toggle-row { display: flex; align-items: center; gap: 6px; }
+  .toggle-row label { font-size: 12px; color: var(--ink-2); cursor: pointer; }
+  .toggle {
+    position: relative; width: 32px; height: 18px; cursor: pointer; flex-shrink: 0;
+  }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider {
+    position: absolute; inset: 0; border-radius: 20px; border: 1.5px solid var(--line-strong);
+    background: var(--bg); transition: background 0.15s, border-color 0.15s;
+  }
+  .toggle-slider::before {
+    content: ''; position: absolute; border-radius: 50%;
+    width: 11px; height: 11px;
+    background: var(--ink-3); top: 2px; left: 2px;
+    transition: transform 0.15s, background 0.15s;
+  }
+  .toggle input:checked + .toggle-slider { border-color: var(--accent); }
+  .toggle input:checked + .toggle-slider::before { background: var(--accent); transform: translateX(14px); }
+
+  /* CASE TABS */
+  .case-tabs { display: flex; gap: 8px; margin-bottom: 0.75rem; flex-wrap: wrap; }
+  .case-tab {
+    padding: 8px 16px; font-size: 13px; font-weight: 500;
+    border-radius: 20px; border: 1.5px solid var(--line-strong); cursor: pointer;
+    background: var(--bg); color: var(--ink-2);
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+  .case-tab.active { color: var(--accent); border-color: var(--accent); font-weight: 700; }
+  .case-tab.blocked { opacity: 0.4; cursor: default; }
+  .add-case-btn {
+    padding: 8px 16px; font-size: 13px;
+    border-radius: 20px; border: 1.5px dashed var(--line-strong); cursor: pointer;
+    background: transparent; color: var(--ink-3);
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+  .case-cc-select {
+    font-size: 13px; font-weight: 600; font-family: 'Noto Sans KR', sans-serif;
+    border: none; outline: none; background: transparent; color: var(--accent);
+    cursor: pointer; max-width: 200px;
+    -webkit-appearance: none; appearance: none;
+  }
+  .block-notice { font-size: 12px; color: var(--ink-2); background: #F3F4F6; border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 1rem; }
+
+  /* SESSION CARD (증례 진행 카드) */
+  .session-card { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; margin-bottom: 1.25rem; }
+  .session-header-row { display: flex; align-items: center; padding: 12px 18px; font-size: 11px; color: var(--ink-3); letter-spacing: 0.03em; border-bottom: 1px solid var(--line); }
+  .session-header-row .sh-name { flex: 1; }
+  .session-header-row .sh-vals { width: 110px; text-align: right; }
+  .session-header-row .sh-btn { width: 78px; text-align: center; }
+
+  .session-row { display: flex; align-items: center; padding: 16px 18px; border-bottom: 1px solid var(--line); gap: 12px; }
+  .session-row:last-child { border-bottom: none; }
+  .session-row.current { background: var(--accent-soft); }
+  .session-name { flex: 1; font-size: 14px; font-weight: 500; }
+  .session-vals { width: 110px; text-align: right; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .session-vals .v-dur { display: block; color: var(--ink); font-weight: 700; font-size: 14px; }
+  .session-vals .v-dur.live { color: var(--accent); }
+  .session-vals .v-cum { display: block; font-size: 11px; color: var(--ink-3); margin-top: 2px; }
+
+  .session-footer { padding: 14px 18px; font-size: 13px; color: var(--ink-2); background: #FAFAFA; }
+  .session-footer b { color: var(--ink); }
+
+  .btn-round {
+    width: 78px; padding: 9px 0; border-radius: var(--radius-sm); border: 1.5px solid var(--line-strong);
+    background: var(--bg); color: var(--ink-3); font-weight: 700; font-size: 13px;
+    font-family: 'Noto Sans KR', sans-serif; cursor: default; flex-shrink: 0;
+  }
+  .btn-round.active { border-color: var(--accent); color: var(--accent); cursor: pointer; }
+  .btn-round.active:active { background: var(--accent-soft); }
+  .btn-round:disabled { opacity: 0.5; }
+
+  .panel-hint { font-size: 13px; color: var(--ink-2); padding: 16px 18px; line-height: 1.55; }
+
+  .btn-secondary {
+    padding: 10px 18px; font-size: 12px; font-weight: 700;
+    cursor: pointer; border-radius: var(--radius-sm); border: 1.5px solid var(--line-strong);
+    background: var(--bg); color: var(--ink-2);
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+  .btn-secondary:active { background: #F3F4F6; }
+
+  /* SUMMARY / LOG */
+  .log-section { margin-top: 0.5rem; }
+  .log-title { font-size: 12px; color: var(--ink-3); margin-bottom: 8px; letter-spacing: 0.02em; }
+  .log-card { border: 1px solid var(--line); border-radius: var(--radius); overflow-x: auto; }
+  .log-table { width: 100%; min-width: 460px; border-collapse: collapse; font-size: 12px; }
+  .log-table th { text-align: left; color: var(--ink-3); font-weight: 600; padding: 10px 14px; border-bottom: 1px solid var(--line); background: #FAFAFA; white-space: nowrap; }
+  .log-table td { padding: 10px 14px; color: var(--ink); border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .log-table tr:last-child td { border-bottom: none; }
+  .log-table .total-cell { font-weight: 700; }
+  .empty-log { text-align: center; color: var(--ink-3); font-size: 12px; padding: 24px; border: 1px solid var(--line); border-radius: var(--radius); }
+
+  /* GLOBAL ACTIONS */
+  .global-actions { display: flex; gap: 8px; margin-bottom: 1.5rem; }
+
+  /* SETTINGS PANEL */
+  .settings-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.35); z-index: 100;
+    align-items: flex-end; justify-content: center;
+  }
+  .settings-overlay.open { display: flex; }
+  .settings-panel {
+    background: var(--bg); border: 1px solid var(--line); border-bottom: none;
+    width: 100%; max-width: 680px; padding: 1.25rem 1.25rem 2.5rem;
+    max-height: 85vh; overflow-y: auto; border-radius: 20px 20px 0 0;
+    animation: slideUp 0.2s ease;
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .settings-title { font-size: 15px; font-weight: 700; margin-bottom: 1.25rem; }
+  .settings-section-title { font-size: 11px; font-weight: 600; color: var(--ink-3); letter-spacing: 0.05em; margin-bottom: 10px; }
+  .sess-edit-row { margin-bottom: 8px; }
+  .sess-edit-name {
+    width: 100%; font-size: 13px; font-weight: 500; font-family: 'Noto Sans KR', sans-serif;
+    border: 1.5px solid var(--line); outline: none; background: var(--bg); border-radius: var(--radius-sm);
+    padding: 10px 12px; color: var(--ink);
+  }
+  .sess-edit-name:focus { border-color: var(--accent); }
+  .btn-primary {
+    width: 100%; padding: 13px; font-size: 14px; font-weight: 700;
+    cursor: pointer; border-radius: var(--radius-sm); border: 1.5px solid var(--accent);
+    background: var(--bg); color: var(--accent);
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+  .btn-primary:active { background: var(--accent-soft); }
+</style>
+</head>
+<body>
+<h2 class="sr-only">의사국가고시 실기시험 세션별 타이머</h2>
+
+<div class="app" id="app">
+  <div class="top-bar">
+    <span class="app-title">의사국가고시 실기 타이머</span>
+    <button class="settings-btn" onclick="openSettings()">설정</button>
+  </div>
+
+  <!-- SETTINGS OVERLAY -->
+  <div class="settings-overlay" id="settings-overlay" onclick="closeSettingsOutside(event)">
+    <div class="settings-panel" id="settings-panel">
+      <div class="settings-title">세션 이름 설정</div>
+      <div class="settings-section-title">순서대로 진행되는 세션 이름</div>
+      <div id="sess-edit-list"></div>
+      <button class="btn-primary" style="margin-top:1rem" onclick="saveSettings()">저장</button>
+    </div>
+  </div>
+
+  <!-- CONTROLS ROW -->
+  <div class="controls-row" id="controls-row"></div>
+
+  <div class="case-tabs" id="case-tabs"></div>
+  <div class="block-notice" id="block-notice" style="display:none">진행 중인 세션이 있습니다. 완료해야 다른 증례로 이동할 수 있습니다.</div>
+
+  <div id="case-panel"></div>
+
+  <div class="global-actions">
+    <button class="btn-secondary" onclick="resetCase(state.current)">현재 증례 초기화</button>
+    <button class="btn-secondary" onclick="resetAll()">전체 초기화</button>
+  </div>
+
+  <div class="log-section">
+    <div class="log-title">기록 (증례별)</div>
+    <div id="log-wrap"></div>
+  </div>
+</div>
+
+<script>
+// ===================== 알림 음원 =====================
+const ALERT_SOUNDS = {
+  start: 'sounds/start.wav',
+  twoMin: 'sounds/two-min.wav',
+  end: 'sounds/end.wav',
+};
+const _audioCache = {};
+function getAudio(key) {
+  if (!_audioCache[key]) _audioCache[key] = new Audio(ALERT_SOUNDS[key]);
+  return _audioCache[key];
+}
+function playAlert(key) {
+  try {
+    const a = getAudio(key);
+    a.currentTime = 0;
+    a.play().catch(() => {});
+  } catch (e) { console.error('알림음 재생 오류:', e); }
+}
+document.addEventListener('touchstart', () => {
+  Object.keys(ALERT_SOUNDS).forEach(key => {
+    const a = getAudio(key);
+    a.play().then(() => { a.pause(); a.currentTime = 0; }).catch(() => {});
+  });
+}, { once: true, passive: true });
+
+// ===================== 증례 주소(Chief Complaint) 목록 =====================
+const CC_CATEGORIES = [
+  { name: '소화기', items: ['급성복통', '소화불량', '변비', '설사', '구토', '토혈(검은변)', '혈변', '황달'] },
+  { name: '순환기', items: ['가슴통증', '실신', '두근거림', '고혈압', '이상지질혈증'] },
+  { name: '호흡기', items: ['콧물/코막힘', '기침', '객혈', '호흡곤란'] },
+  { name: '신장/비뇨', items: ['핍뇨', '다뇨', '혈뇨', '배뇨이상/요실금'] },
+  { name: '전신/감염/내분비', items: ['발열', '쉽게 멍이듦', '피로', '체중감소', '체중증가 / 비만'] },
+  { name: '관절/근골격/피부', items: ['관절통증 / 부기', '피부발진', '목통증', '허리통증'] },
+  { name: '정신', items: ['기분변화', '불안', '수면장애'] },
+  { name: '신경', items: ['기억력 저하', '어지러움', '두통', '감각/근력이상', '의식장애', '경련', '떨림 / 운동이상'] },
+  { name: '여성', items: ['유방덩이/유방통', '질 분비물', '질출혈 (AUB : 비정상자궁출혈)', '월경과다/월경통', '무월경', '산전진찰'] },
+  { name: '소아', items: ['성장지연', '발달지연', '예방접종'] },
+  { name: '상담', items: ['금연상담', '음주상담', '물질 오남용', '나쁜 소식 전하기', '가정폭력', '성폭력', '자살'] },
+];
+
+// ===================== 세션 정의 =====================
+let customSessions = ['병력청취', '신체진찰', '하이브리드', '환자교육'];
+const BASE_SESS_IDX = [0, 1, 3];
+const HYBRID_SESS_IDX = [0, 1, 2, 3];
+
+function fmt(sec) {
+  sec = Math.max(0, sec);
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+}
+
+// ===================== 저장/불러오기 =====================
+const STORAGE_KEY = 'kmle-timer-state-v2';
+function saveState() {
+  try {
+    const data = {
+      customSessions,
+      current: state.current,
+      caseSeq: state.caseSeq,
+      cases: state.cases.map(c => ({
+        id: c.id, label: c.label, hybrid: c.hybrid, sessIdx: c.sessIdx,
+        elapsed: c.elapsed, currentStep: c.currentStep, running: c.running, startAt: c.startAt,
+        cd: c.cd,
+      })),
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch (e) { console.error('저장 오류:', e); }
+}
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    if (!Array.isArray(data.cases) || !data.cases.length) return false;
+    if (data.customSessions) customSessions = data.customSessions;
+    state.cases = data.cases;
+    state.current = data.current || 0;
+    state.caseSeq = data.caseSeq || data.cases.length;
+    return true;
+  } catch (e) { console.error('불러오기 오류:', e); return false; }
+}
+
+// ===================== 상태 =====================
+function makeCase(n) {
+  return {
+    id: n,
+    label: '증례 ' + n,
+    hybrid: null,
+    sessIdx: null,
+    elapsed: [],
+    currentStep: -1,
+    running: false,
+    startAt: null,
+    cd: { timeLimit: 720, startAt: null, twoMinAlerted: false, endAlerted: false },
+  };
+}
+
+let state = { cases: [makeCase(1)], current: 0, caseSeq: 1 };
+let _tickInterval = null;
+
+function activeCase() { return state.cases.find(c => c.running) || null; }
+function isBlocked(idx) {
+  const a = activeCase();
+  return a && state.cases[idx] !== a;
+}
+
+function startTicker() {
+  if (_tickInterval) return;
+  _tickInterval = setInterval(tick, 500);
+}
+function stopTicker() {
+  if (_tickInterval) { clearInterval(_tickInterval); _tickInterval = null; }
+}
+
+function tick() {
+  const c = activeCase();
+  if (!c) { stopTicker(); render(); return; }
+  if (c.cd.timeLimit && c.cd.startAt) {
+    const elapsedSec = Math.floor((Date.now() - c.cd.startAt) / 1000);
+    const remaining = c.cd.timeLimit - elapsedSec;
+    if (!c.cd.twoMinAlerted && remaining <= 120 && remaining > 0) {
+      c.cd.twoMinAlerted = true;
+      if (document.getElementById('alert-toggle')?.checked) playAlert('twoMin');
+    }
+    if (!c.cd.endAlerted && remaining <= 0) {
+      c.cd.endAlerted = true;
+      if (document.getElementById('beep-toggle')?.checked) playAlert('end');
+    }
+  }
+  render();
+}
+
+// ===================== 증례 진행 로직 =====================
+function startCase(idx) {
+  if (isBlocked(idx)) return;
+  const c = state.cases[idx];
+  if (c.currentStep !== -1) return;
+  const hybridOn = document.getElementById('hybrid-toggle')?.checked;
+  c.hybrid = !!hybridOn;
+  c.sessIdx = (c.hybrid ? HYBRID_SESS_IDX : BASE_SESS_IDX).slice();
+  c.elapsed = c.sessIdx.map(() => 0);
+  c.currentStep = 0;
+  c.running = true;
+  c.startAt = Date.now();
+  const timeLimit = parseInt(document.getElementById('time-select')?.value || '720');
+  c.cd = { timeLimit, startAt: timeLimit ? Date.now() : null, twoMinAlerted: false, endAlerted: false };
+  if (document.getElementById('start-alert-toggle')?.checked) playAlert('start');
+  startTicker();
+  saveState();
+  render();
+}
+
+function completeStep(idx) {
+  const c = state.cases[idx];
+  if (!c.running) return;
+  const elapsedSec = Math.floor((Date.now() - c.startAt) / 1000);
+  c.elapsed[c.currentStep] = elapsedSec;
+  c.currentStep += 1;
+  if (c.currentStep < c.sessIdx.length) {
+    c.startAt = Date.now();
+  } else {
+    c.running = false;
+    c.startAt = null;
+    stopTicker();
+  }
+  saveState();
+  render();
+}
+
+function resetCase(idx) {
+  const label = state.cases[idx].label;
+  const id = state.cases[idx].id;
+  state.cases[idx] = makeCase(id);
+  state.cases[idx].label = label;
+  if (!activeCase()) stopTicker();
+  saveState();
+  render();
+}
+
+function resetAll() {
+  stopTicker();
+  state.cases = state.cases.map(c => {
+    const fresh = makeCase(c.id);
+    fresh.label = c.label;
+    return fresh;
+  });
+  saveState();
+  render();
+}
+
+function switchCase(idx) {
+  if (isBlocked(idx)) return;
+  state.current = idx;
+  saveState();
+  render();
+}
+
+function addCase() {
+  state.caseSeq += 1;
+  state.cases.push(makeCase(state.caseSeq));
+  if (!activeCase()) state.current = state.cases.length - 1;
+  saveState();
+  render();
+}
+
+// ===================== 증례 이름(CC) 선택 =====================
+function startEditTab(idx) {
+  if (isBlocked(idx)) return;
+  switchCase(idx);
+  const tabs = document.querySelectorAll('.case-tab');
+  const btn = tabs[idx];
+  if (!btn) return;
+  const oldLabel = state.cases[idx].label;
+  const isPreset = CC_CATEGORIES.some(cat => cat.items.includes(oldLabel));
+  const optionsHtml = CC_CATEGORIES.map(cat =>
+    '<optgroup label="' + cat.name + '">' +
+      cat.items.map(item => '<option value="' + item + '"' + (item === oldLabel ? ' selected' : '') + '>' + item + '</option>').join('') +
+    '</optgroup>'
+  ).join('');
+  btn.innerHTML = '<select class="case-cc-select" id="edit-select-' + idx + '">' +
+    (!isPreset ? '<option value="' + oldLabel + '" selected>' + oldLabel + '</option>' : '') +
+    optionsHtml + '</select>';
+  btn.onclick = null;
+  const select = document.getElementById('edit-select-' + idx);
+  select.addEventListener('click', e => e.stopPropagation());
+  select.addEventListener('change', () => {
+    state.cases[idx].label = select.value;
+    saveState();
+    render();
+  });
+  select.addEventListener('blur', () => render());
+  select.focus();
+}
+
+// ===================== 설정 패널 =====================
+let draftSessions = null;
+function openSettings() {
+  draftSessions = customSessions.slice();
+  renderSettingsPanel();
+  document.getElementById('settings-overlay').classList.add('open');
+}
+function closeSettings() { document.getElementById('settings-overlay').classList.remove('open'); }
+function closeSettingsOutside(e) { if (e.target === document.getElementById('settings-overlay')) closeSettings(); }
+function renderSettingsPanel() {
+  const list = document.getElementById('sess-edit-list');
+  list.innerHTML = draftSessions.map((name, i) =>
+    '<div class="sess-edit-row"><input class="sess-edit-name" maxlength="12" value="' + name + '" oninput="draftSessions[' + i + '] = this.value"></div>'
+  ).join('');
+}
+function saveSettings() {
+  customSessions = draftSessions.slice();
+  closeSettings();
+  saveState();
+  render();
+}
+
+// ===================== 세션 표 렌더 (핵심 카드) =====================
+function sessionRowHtml(name, valsHtml, btnLabel, btnActive, onclickAttr, rowClass) {
+  const btnHtml = btnLabel
+    ? '<button class="btn-round' + (btnActive ? ' active' : '') + '"' + (btnActive ? ' onclick="' + onclickAttr + '"' : ' disabled') + '>' + btnLabel + '</button>'
+    : '';
+  return '<div class="session-row' + (rowClass ? ' ' + rowClass : '') + '"><div class="session-name">' + name + '</div><div class="session-vals">' + valsHtml + '</div>' + btnHtml + '</div>';
+}
+
+function renderSessionCard(caseObj, idx) {
+  let rowsHtml = '';
+  let footerHtml = '';
+
+  if (caseObj.currentStep === -1) {
+    // 아직 시작 전: 하이브리드 토글에 따른 예정 세션 목록 미리보기
+    const hybridOn = document.getElementById('hybrid-toggle')?.checked;
+    const previewIdx = hybridOn ? HYBRID_SESS_IDX : BASE_SESS_IDX;
+    rowsHtml = previewIdx.map((sIdx, pos) => {
+      const isFirst = pos === 0;
+      return sessionRowHtml(customSessions[sIdx], '', isFirst ? '시작' : '완료', isFirst, 'startCase(' + idx + ')', '');
+    }).join('');
+  } else {
+    let cum = 0;
+    rowsHtml = caseObj.sessIdx.map((sIdx, pos) => {
+      const name = customSessions[sIdx];
+      if (pos < caseObj.currentStep) {
+        cum += caseObj.elapsed[pos];
+        const vals = '<span class="v-dur">' + fmt(caseObj.elapsed[pos]) + '</span><span class="v-cum">누적 ' + fmt(cum) + '</span>';
+        return sessionRowHtml(name, vals, '', false, '', 'done');
+      }
+      if (pos === caseObj.currentStep && caseObj.running) {
+        const live = Math.floor((Date.now() - caseObj.startAt) / 1000);
+        const vals = '<span class="v-dur live">' + fmt(live) + '</span>';
+        return sessionRowHtml(name, vals, '완료', true, 'completeStep(' + idx + ')', 'current');
+      }
+      return sessionRowHtml(name, '', '완료', false, '', '');
+    }).join('');
+    if (!caseObj.running) {
+      const total = caseObj.elapsed.reduce((a, b) => a + b, 0);
+      footerHtml = '<div class="session-footer">이 증례가 완료되었습니다 · 합계 <b>' + fmt(total) + '</b></div>';
+    }
+  }
+
+  return '<div class="session-card">' +
+    '<div class="session-header-row"><span class="sh-name">평가 항목</span><span class="sh-vals">소요 · 누적</span><span class="sh-btn">진행</span></div>' +
+    rowsHtml + footerHtml + '</div>';
+}
+
+// ===================== 렌더 =====================
+function render() {
+  const c = state.current;
+  const running = state.cases.some(cc => cc.running);
+  const curCase = state.cases[c];
+
+  // CONTROLS ROW
+  let timeCell;
+  if (curCase.currentStep === -1) {
+    timeCell = '<div class="ctrl-cell"><span class="ctrl-label">제한시간</span>' +
+      '<select id="time-select">' +
+        [0,60,90,120,150,180,210,240,270,300,330,360,390,420,450,480,510,540,570,600,630,660,690,720].map(v => {
+          const label = v === 0 ? '없음' : (v % 60 === 0 ? (v/60) + '분' : Math.floor(v/60) + '분 30초');
+          return '<option value="' + v + '"' + (v === 720 ? ' selected' : '') + '>' + label + '</option>';
+        }).join('') +
+      '</select></div>';
+  } else {
+    const cd = curCase.cd;
+    let cdText = '없음';
+    let overClass = '';
+    if (cd.timeLimit && cd.startAt) {
+      const elapsedSec = Math.floor((Date.now() - cd.startAt) / 1000);
+      const remaining = cd.timeLimit - elapsedSec;
+      if (remaining < 0) { cdText = '+' + fmt(-remaining) + ' 초과'; overClass = 'over'; }
+      else cdText = fmt(remaining);
+    }
+    timeCell = '<div class="ctrl-cell"><span class="ctrl-label">남은시간</span><span class="cd-time ' + overClass + '">' + cdText + '</span></div>';
+  }
+  document.getElementById('controls-row').innerHTML =
+    timeCell +
+    '<div class="ctrl-cell"><span class="ctrl-label">하이브리드</span><label class="toggle"><input type="checkbox" id="hybrid-toggle" onchange="render()"' + (running ? ' disabled' : '') + '><span class="toggle-slider"></span></label></div>' +
+    '<div class="ctrl-cell"><span class="ctrl-label">알림음</span><div style="display:flex;gap:12px">' +
+      '<div class="toggle-row"><label class="toggle"><input type="checkbox" id="start-alert-toggle" checked><span class="toggle-slider"></span></label><label>시작</label></div>' +
+      '<div class="toggle-row"><label class="toggle"><input type="checkbox" id="alert-toggle" checked><span class="toggle-slider"></span></label><label>2분전</label></div>' +
+      '<div class="toggle-row"><label class="toggle"><input type="checkbox" id="beep-toggle" checked><span class="toggle-slider"></span></label><label>종료</label></div>' +
+    '</div></div>';
+
+  // TABS
+  const tabsEl = document.getElementById('case-tabs');
+  tabsEl.innerHTML = state.cases.map((cas, i) => {
+    const blocked = isBlocked(i);
+    const cls = 'case-tab' + (i === c ? ' active' : '') + (blocked ? ' blocked' : '');
+    const suffix = cas.running ? ' · 진행중' : '';
+    return '<button class="' + cls + '" onclick="switchCase(' + i + ')" ondblclick="startEditTab(' + i + ')" title="더블탭하여 주소 선택">' + cas.label + suffix + '</button>';
+  }).join('') + '<button class="add-case-btn" onclick="addCase()">+ 증례 추가</button>';
+
+  document.getElementById('block-notice').style.display = running ? 'block' : 'none';
+
+  // SESSION CARD
+  document.getElementById('case-panel').innerHTML = renderSessionCard(curCase, c);
+
+  // LOG (그룹핑)
+  const rows = state.cases.filter(cs => cs.currentStep !== -1).map(cs => {
+    const cells = [0, 1, 2, 3].map(slot => {
+      const pos = cs.sessIdx.indexOf(slot);
+      if (pos === -1) return '—';
+      if (pos < cs.currentStep) return fmt(cs.elapsed[pos]);
+      if (pos === cs.currentStep && cs.running) return '진행중';
+      return '—';
+    });
+    const total = cs.elapsed.reduce((a, b) => a + b, 0);
+    return '<tr><td>' + cs.label + '</td>' + cells.map(v => '<td>' + v + '</td>').join('') + '<td class="total-cell">' + fmt(total) + '</td></tr>';
+  });
+  const logWrap = document.getElementById('log-wrap');
+  if (!rows.length) {
+    logWrap.innerHTML = '<div class="empty-log">아직 기록이 없습니다</div>';
+  } else {
+    logWrap.innerHTML = '<div class="log-card"><table class="log-table"><thead><tr><th>증례</th>' +
+      customSessions.map(n => '<th>' + n + '</th>').join('') + '<th>합계</th></tr></thead><tbody>' +
+      rows.join('') + '</tbody></table></div>';
+  }
+}
+
+// ===================== 초기화 =====================
+loadState();
+if (activeCase()) startTicker();
+render();
+</script>
+</body>
+</html>
